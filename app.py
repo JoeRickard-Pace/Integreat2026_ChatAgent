@@ -69,6 +69,8 @@ def call_chat_api(message: str, conversation_id: str) -> dict[str, Any]:
 st.set_page_config(page_title="AI Chat", page_icon="💬")
 api_url, _ = get_api_settings()
 
+st.checkbox("Debug mode", key="debug_mode")
+
 st.title("AI Chat")
 st.caption(f"Conversation ID: {get_conversation_id()}")
 
@@ -97,8 +99,13 @@ if prompt:
 
     try:
         result = call_chat_api(prompt, get_conversation_id())
-        assistant_text = result["text"]
-        attachment = result.get("attachment")
+
+        if st.session_state.get("debug_mode"):
+            assistant_text = str(result)
+            attachment = None
+        else:
+            assistant_text = result["text"]
+            attachment = result.get("attachment")
 
         st.session_state.messages.append(
             {
@@ -109,10 +116,13 @@ if prompt:
         )
 
         with st.chat_message("assistant"):
-            if assistant_text:
-                st.markdown(assistant_text)
-            if attachment:
-                render_attachment(attachment)
+            if st.session_state.get("debug_mode"):
+                st.json(result)
+            else:
+                if assistant_text:
+                    st.markdown(assistant_text)
+                if attachment:
+                    render_attachment(attachment)
 
     except requests.RequestException as exc:
         error_message = f"Request failed: {exc}"
