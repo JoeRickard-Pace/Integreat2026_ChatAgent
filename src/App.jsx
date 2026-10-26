@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
+import { BrowserRouter, Route, Routes } from 'react-router-dom';
+import AuditPage from './AuditPage';
 
 const API_URL = import.meta.env.DEV ? '/chat' : '/.netlify/functions/chat';
 const API_KEY = '';
@@ -73,7 +75,7 @@ function extractAssistantPayload(payload) {
   return { message: 'No response returned from the API.', options: [] };
 }
 
-function App() {
+function ChatApp() {
   const [conversationId, setConversationId] = useState(() => makeConversationId());
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
@@ -210,9 +212,7 @@ function App() {
 
           {isLoading && (
             <div className="message-row assistant">
-              <div className="bubble assistant waiting">
-                Thinking...
-              </div>
+              <div className="bubble assistant waiting">Thinking...</div>
             </div>
           )}
         </div>
@@ -250,6 +250,17 @@ function App() {
         </form>
       </div>
     </div>
+  );
+}
+
+function App() {
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<ChatApp />} />
+        <Route path="/audit" element={<AuditPage />} />
+      </Routes>
+    </BrowserRouter>
   );
 }
 
