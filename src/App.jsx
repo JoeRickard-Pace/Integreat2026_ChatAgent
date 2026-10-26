@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 
-const API_URL = '/chat';
-const API_KEY = import.meta.env.VITE_API_KEY || '';
+const API_URL = import.meta.env.DEV ? '/chat' : '/.netlify/functions/chat';
+const API_KEY = '';
 
 function normalizeText(value, fallback = '') {
   if (value === null || value === undefined) {
