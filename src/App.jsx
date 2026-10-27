@@ -2,8 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { BrowserRouter, Route, Routes } from 'react-router-dom';
 import AuditPage from './AuditPage';
 
-const API_URL = import.meta.env.DEV ? '/chat' : '/.netlify/functions/chat';
-const API_KEY = '';
+const API_URL = import.meta.env.VITE_CHAT_API_URL || import.meta.env.CHAT_API_URL || '';
+const API_KEY = import.meta.env.VITE_CHAT_API_KEY || import.meta.env.CHAT_API_KEY || '';
 
 function normalizeText(value, fallback = '') {
   if (value === null || value === undefined) {
@@ -73,10 +73,12 @@ function extractAssistantPayload(payload) {
   return { message, options, flightPlanPdfDataUrl };
 }
 
+const SAMPLE_PROMPT = "My name is Jon Doe, I'm the CTO at Acme Corp. We work in the finance sector";
+
 function ChatApp() {
   const [conversationId, setConversationId] = useState(() => makeConversationId());
   const [messages, setMessages] = useState([]);
-  const [input, setInput] = useState('');
+  const [input, setInput] = useState(SAMPLE_PROMPT);
   const [debugMode, setDebugMode] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');

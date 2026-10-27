@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 
-const AUDIT_API_URL = import.meta.env.DEV ? '/audit-data' : '/.netlify/functions/audit';
+const AUDIT_API_URL = import.meta.env.VITE_AUDIT_API_URL || import.meta.env.AUDIT_API_URL || '';
+const AUDIT_API_KEY = import.meta.env.VITE_AUDIT_API_KEY || import.meta.env.AUDIT_API_KEY || '';
 
 function toDisplayString(value) {
   if (value === null || value === undefined) return '';
@@ -444,6 +445,7 @@ function AuditPage() {
           method: 'GET',
           headers: {
             Accept: 'application/json',
+            ...(AUDIT_API_KEY ? { Authorization: `Bearer ${AUDIT_API_KEY}` } : {}),
           },
         });
 
