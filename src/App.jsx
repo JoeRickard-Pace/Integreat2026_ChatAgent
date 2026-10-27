@@ -55,24 +55,22 @@ function makeConversationId() {
 }
 
 function extractAssistantPayload(payload) {
+  let response = payload;
+
   if (Array.isArray(payload) && payload.length > 0) {
-    const first = payload[0];
-    const response = first?.response ?? {};
-    const uiResponse = response.ui_response ?? response;
-    const message = normalizeText(uiResponse.message ?? response.summary ?? 'No response');
-    const options = normalizeOptions(uiResponse.options);
-    return { message, options };
+    response = payload[0]?.response ?? payload[0] ?? {};
+  } else if (payload && typeof payload === 'object') {
+    response = payload.response ?? payload;
   }
 
-  if (payload && typeof payload === 'object') {
-    const response = payload.response ?? payload;
-    const uiResponse = response.ui_response ?? response;
-    const message = normalizeText(uiResponse.message ?? response.summary ?? JSON.stringify(payload, null, 2));
-    const options = normalizeOptions(uiResponse.options);
-    return { message, options };
-  }
+  const uiResponse = response?.ui_response ?? response ?? {};
+  const flightPlanData = response?.flight_plan_data ?? uiResponse?.flight_plan_data ?? {};
+  const flightPlanPdfBase64 = typeof flightPlanData.flight_plan_pdf_binary === 'string' ? flightPlanData.flight_plan_pdf_binary.trim() : '';
+  const flightPlanPdfDataUrl = flightPlanPdfBase64 ? `data:application/pdf;base64,${flightPlanPdfBase64}` : null;
+  const message = normalizeText(uiResponse.message ?? response?.summary ?? 'No response');
+  const options = normalizeOptions(uiResponse.options);
 
-  return { message: 'No response returned from the API.', options: [] };
+  return { message, options, flightPlanPdfDataUrl };
 }
 
 function ChatApp() {
@@ -130,6 +128,7 @@ function ChatApp() {
         role: 'assistant',
         text: assistantPayload.message,
         options: assistantPayload.options,
+        flightPlanPdfDataUrl: assistantPayload.flightPlanPdfDataUrl,
       };
 
       setMessages((current) => [...current, assistantMessage]);
@@ -188,6 +187,18 @@ function ChatApp() {
                 ) : (
                   <>
                     <div className="message-text">{message.text}</div>
+
+                    {message.role === 'assistant' && message.flightPlanPdfDataUrl && (
+                      <div className="pdf-attachment">
+                        <object data={message.flightPlanPdfDataUrl} type="application/pdf" className="flight-plan-pdf-preview">
+                          <a href={message.flightPlanPdfDataUrl} download="flightplan.pdf">Download flightplan.pdf</a>
+                        </object>
+                        <a href={message.flightPlanPdfDataUrl} download="flightplan.pdf" className="pdf-download-link">
+                          Download flightplan.pdf
+                        </a>
+                      </div>
+                    )}
+
                     {message.role === 'assistant' && Array.isArray(message.options) && message.options.length > 0 && (
                       <div className="prompt-list">
                         {message.options.map((option) => (
