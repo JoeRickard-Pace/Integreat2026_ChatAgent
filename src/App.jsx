@@ -170,6 +170,11 @@ function ChatApp() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [promptSelections, setPromptSelections] = useState({});
+  const [leadForm, setLeadForm] = useState({
+    name: '',
+    email: '',
+    contactMe: false,
+  });
 
   useEffect(() => {
     setConversationId((current) => current || makeConversationId());
@@ -245,6 +250,22 @@ function ChatApp() {
     sendMessage();
   };
 
+  const handleLeadSubmit = (event) => {
+    event.preventDefault();
+
+    const payload = JSON.stringify({
+      name: leadForm.name.trim(),
+      email: leadForm.email.trim(),
+      contact_me: Boolean(leadForm.contactMe),
+    });
+
+    if (!payload || payload === '{}') {
+      return;
+    }
+
+    sendMessage(payload);
+  };
+
   const togglePromptSelection = (messageId, option) => {
     setPromptSelections((current) => {
       const next = { ...current };
@@ -296,7 +317,44 @@ function ChatApp() {
         <div className="messages-panel">
           {messages.length === 0 && (
             <div className="empty-state">
-              <p>Start the conversation by typing a message below.</p>
+              <form className="lead-form" onSubmit={handleLeadSubmit}>
+                <h2>Tell us a bit about you</h2>
+
+                <label className="field-row">
+                  <span>Name</span>
+                  <input
+                    type="text"
+                    value={leadForm.name}
+                    onChange={(event) => setLeadForm((current) => ({ ...current, name: event.target.value }))}
+                    placeholder="Jane Smith"
+                    required
+                  />
+                </label>
+
+                <label className="field-row">
+                  <span>Email</span>
+                  <input
+                    type="email"
+                    value={leadForm.email}
+                    onChange={(event) => setLeadForm((current) => ({ ...current, email: event.target.value }))}
+                    placeholder="jane@company.com"
+                    required
+                  />
+                </label>
+
+                <label className="checkbox-row">
+                  <input
+                    type="checkbox"
+                    checked={leadForm.contactMe}
+                    onChange={(event) => setLeadForm((current) => ({ ...current, contactMe: event.target.checked }))}
+                  />
+                  <span>I would like to be contacted in future</span>
+                </label>
+
+                <button type="submit" className="lead-submit" disabled={isLoading}>
+                  Continue
+                </button>
+              </form>
             </div>
           )}
 
