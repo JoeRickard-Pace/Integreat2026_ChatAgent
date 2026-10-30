@@ -88,22 +88,28 @@ function buildConversationGroups(rows) {
     grouped.set(key, entry);
   });
 
-  return Array.from(grouped.entries()).map(([conversationId, conversationRows]) => {
-    const sortedRows = [...conversationRows].sort((a, b) => {
-      const aTime = new Date(a?.request_start_time || a?.request_end_time || 0).getTime();
-      const bTime = new Date(b?.request_start_time || b?.request_end_time || 0).getTime();
-      return aTime - bTime;
-    });
+  return Array.from(grouped.entries())
+    .map(([conversationId, conversationRows]) => {
+      const sortedRows = [...conversationRows].sort((a, b) => {
+        const aTime = new Date(a?.request_start_time || a?.request_end_time || 0).getTime();
+        const bTime = new Date(b?.request_start_time || b?.request_end_time || 0).getTime();
+        return aTime - bTime;
+      });
 
-    return {
-      conversationId,
-      rows: sortedRows,
-      firstSeen: sortedRows[0]?.request_start_time || sortedRows[0]?.request_end_time || '',
-      lastSeen: sortedRows[sortedRows.length - 1]?.request_end_time || sortedRows[sortedRows.length - 1]?.request_start_time || '',
-      totalTokens: sortedRows.reduce((sum, row) => sum + (Number(row.usage_total_tokens) || 0), 0),
-      requestCount: sortedRows.length,
-    };
-  });
+      return {
+        conversationId,
+        rows: sortedRows,
+        firstSeen: sortedRows[0]?.request_start_time || sortedRows[0]?.request_end_time || '',
+        lastSeen: sortedRows[sortedRows.length - 1]?.request_end_time || sortedRows[sortedRows.length - 1]?.request_start_time || '',
+        totalTokens: sortedRows.reduce((sum, row) => sum + (Number(row.usage_total_tokens) || 0), 0),
+        requestCount: sortedRows.length,
+      };
+    })
+    .sort((a, b) => {
+      const aTime = new Date(a.lastSeen || 0).getTime();
+      const bTime = new Date(b.lastSeen || 0).getTime();
+      return bTime - aTime;
+    });
 }
 
 function parseToolCallsValue(value) {

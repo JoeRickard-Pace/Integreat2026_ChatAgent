@@ -173,19 +173,25 @@ function ChatApp() {
   const [leadForm, setLeadForm] = useState({
     name: '',
     email: '',
+    company: '',
     contactMe: false,
   });
+  const [showLeadForm, setShowLeadForm] = useState(true);
 
   useEffect(() => {
     setConversationId((current) => current || makeConversationId());
   }, []);
 
-  const sendMessage = async (messageText) => {
+  const sendMessage = async (messageText, options = {}) => {
+    const { silent = false } = options;
     const text = (messageText ?? input).trim();
     if (!text) return;
 
-    const nextUserMessage = { id: Date.now() + '-user', role: 'user', text };
-    setMessages((current) => [...current, nextUserMessage]);
+    if (!silent) {
+      const nextUserMessage = { id: Date.now() + '-user', role: 'user', text };
+      setMessages((current) => [...current, nextUserMessage]);
+    }
+
     setInput('');
     setError('');
     setIsLoading(true);
@@ -256,6 +262,7 @@ function ChatApp() {
     const payload = JSON.stringify({
       name: leadForm.name.trim(),
       email: leadForm.email.trim(),
+      company: leadForm.company.trim(),
       contact_me: Boolean(leadForm.contactMe),
     });
 
@@ -263,7 +270,9 @@ function ChatApp() {
       return;
     }
 
-    sendMessage(payload);
+    setShowLeadForm(false);
+    setMessages([]);
+    sendMessage(payload, { silent: true });
   };
 
   const togglePromptSelection = (messageId, option) => {
@@ -315,7 +324,7 @@ function ChatApp() {
         </header>
 
         <div className="messages-panel">
-          {messages.length === 0 && (
+          {showLeadForm && messages.length === 0 && (
             <div className="empty-state">
               <form className="lead-form" onSubmit={handleLeadSubmit}>
                 <h2>Tell us a bit about you</h2>
@@ -339,6 +348,16 @@ function ChatApp() {
                     onChange={(event) => setLeadForm((current) => ({ ...current, email: event.target.value }))}
                     placeholder="jane@company.com"
                     required
+                  />
+                </label>
+
+                <label className="field-row">
+                  <span>Company</span>
+                  <input
+                    type="text"
+                    value={leadForm.company}
+                    onChange={(event) => setLeadForm((current) => ({ ...current, company: event.target.value }))}
+                    placeholder="Acme Corp"
                   />
                 </label>
 
@@ -370,10 +389,10 @@ function ChatApp() {
                     {message.role === 'assistant' && message.flightPlanPdfDataUrl && (
                       <div className="pdf-attachment">
                         <object data={message.flightPlanPdfDataUrl} type="application/pdf" className="flight-plan-pdf-preview">
-                          <a href={message.flightPlanPdfDataUrl} download="flightplan.pdf">Download flightplan.pdf</a>
+                          <a href={message.flightPlanPdfDataUrl} download="pace-integration-flightplan.pdf">Download pace-integration-flightplan.pdf</a>
                         </object>
-                        <a href={message.flightPlanPdfDataUrl} download="flightplan.pdf" className="pdf-download-link">
-                          Download flightplan.pdf
+                        <a href={message.flightPlanPdfDataUrl} download="pace-integration-flightplan.pdf" className="pdf-download-link">
+                          Download pace-integration-flightplan.pdf
                         </a>
                       </div>
                     )}
