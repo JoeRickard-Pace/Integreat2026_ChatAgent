@@ -5,6 +5,7 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
   const chatTarget = env.VITE_CHAT_API_URL || env.CHAT_API_URL || env.VITE_API_URL;
   const auditTarget = env.VITE_AUDIT_API_URL || env.AUDIT_API_URL;
+  const statesTarget = env.VITE_GETSTATES_API_URL || env.GETSTATES_API_URL;
 
   const withAuth = (token, path) => ({
     target: path,
@@ -28,6 +29,7 @@ export default defineConfig(({ mode }) => {
       proxy: {
         '/chat': withAuth(env.VITE_CHAT_API_KEY || env.CHAT_API_KEY || env.VITE_API_KEY || '', chatTarget),
         '/audit-data': withAuth(env.VITE_AUDIT_API_KEY || env.AUDIT_API_KEY || '', auditTarget),
+        '/states-data': withAuth(env.VITE_GETSTATES_API_KEY || env.GETSTATES_API_KEY || '', statesTarget),
       },
     },
     preview: {
@@ -36,6 +38,7 @@ export default defineConfig(({ mode }) => {
       proxy: {
         '/chat': withAuth(env.VITE_CHAT_API_KEY || env.CHAT_API_KEY || env.VITE_API_KEY || '', chatTarget),
         '/audit-data': withAuth(env.VITE_AUDIT_API_KEY || env.AUDIT_API_KEY || '', auditTarget),
+        '/states-data': withAuth(env.VITE_GETSTATES_API_KEY || env.GETSTATES_API_KEY || '', statesTarget),
       },
     },
   };

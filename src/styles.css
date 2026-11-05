@@ -773,9 +773,239 @@ pre {
   font-size: 0.8rem;
 }
 
+.dashboard-shell {
+  width: 100%;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
+}
+
+.dashboard-panel {
+  width: min(1200px, 100%);
+  height: min(94vh, 860px);
+  background: rgba(8, 15, 26, 0.9);
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 24px;
+  box-shadow: 0 30px 80px rgba(2, 6, 23, 0.5);
+  overflow: hidden;
+}
+
+.dashboard-topbar {
+  background: rgba(15, 23, 42, 0.85);
+}
+
+.live-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: rgba(15, 118, 110, 0.18);
+  border: 1px solid rgba(45, 212, 191, 0.3);
+  color: #d1fae5;
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.live-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #34d399;
+  box-shadow: 0 0 0 0 rgba(52, 211, 153, 0.8);
+  animation: liveBlink 1.2s infinite ease-out;
+}
+
+.dashboard-body {
+  display: grid;
+  grid-template-columns: minmax(0, 2.4fr) minmax(240px, 0.8fr);
+  gap: 14px;
+  padding: 14px 16px 16px;
+  height: calc(100% - 84px);
+}
+
+.radar-card,
+.list-card,
+.stat-card {
+  background: rgba(15, 23, 42, 0.72);
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 18px;
+}
+
+.radar-card {
+  min-height: 0;
+  padding: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(circle at center, rgba(22, 101, 52, 0.18), rgba(15, 23, 42, 0.96) 52%);
+}
+
+.radar-visual {
+  width: min(100%, 620px);
+  max-height: 100%;
+  aspect-ratio: 1;
+}
+
+.radar-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+  filter: drop-shadow(0 0 18px rgba(110, 231, 183, 0.18));
+  animation: radarFade 2.2s ease-in-out infinite alternate;
+}
+
+.scan-ring {
+  transform-origin: 180px 180px;
+  animation: scanRotate 10s linear infinite;
+}
+
+.radar-point text {
+  fill: #ecfeff;
+  font-weight: 600;
+}
+
+.radar-point.latest .radar-core {
+  filter: drop-shadow(0 0 10px rgba(134, 239, 172, 0.9));
+}
+
+.radar-point.latest .radar-glow {
+  animation: pointPulse 1.5s ease-in-out infinite;
+}
+
+.radar-point.latest .radar-pulse {
+  animation: pulseRing 2s ease-out infinite;
+}
+
+.pulse-stat {
+  position: relative;
+  overflow: hidden;
+}
+
+.pulse-stat::after {
+  content: '';
+  position: absolute;
+  inset: -30% auto -30% -30%;
+  width: 45%;
+  background: linear-gradient(90deg, transparent, rgba(110, 231, 183, 0.18), transparent);
+  transform: skewX(-25deg);
+  animation: shimmer 3s linear infinite;
+}
+
+.latest-stat {
+  border-color: rgba(134, 239, 172, 0.45);
+  box-shadow: inset 0 0 18px rgba(134, 239, 172, 0.06);
+}
+
+.dashboard-side {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.stat-card {
+  padding: 14px 14px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.stat-card span {
+  color: #9fb3cc;
+  letter-spacing: 0.08em;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+}
+
+.stat-card strong {
+  font-size: clamp(1.6rem, 3vw, 2.6rem);
+  color: #ecfeff;
+}
+
+.list-card {
+  padding: 12px 14px;
+}
+
+.list-card h3 {
+  margin: 0 0 12px;
+  color: #dfeafc;
+  font-size: 0.8rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.list-card ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.list-card li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  color: #edf6ff;
+  font-size: 0.75rem;
+}
+
+.list-card li span {
+  color: #dfeafc;
+}
+
+.list-card li strong {
+  color: #6ee7b7;
+}
+
+@keyframes liveBlink {
+  0% { box-shadow: 0 0 0 0 rgba(52, 211, 153, 0.7); }
+  70% { box-shadow: 0 0 0 12px rgba(52, 211, 153, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(52, 211, 153, 0); }
+}
+
+@keyframes radarFade {
+  0% { opacity: 0.68; }
+  100% { opacity: 1; }
+}
+
+@keyframes scanRotate {
+  0% { transform: rotate(0deg); opacity: 0.2; }
+  50% { opacity: 0.8; }
+  100% { transform: rotate(360deg); opacity: 0.2; }
+}
+
+@keyframes pointPulse {
+  0%, 100% { opacity: 0.7; }
+  50% { opacity: 1; }
+}
+
+@keyframes pulseRing {
+  0% { opacity: 0.8; transform: scale(0.75); }
+  70% { opacity: 0; transform: scale(1.45); }
+  100% { opacity: 0; transform: scale(1.7); }
+}
+
+@keyframes shimmer {
+  0% { transform: translateX(-120%) skewX(-25deg); }
+  100% { transform: translateX(320%) skewX(-25deg); }
+}
+
 @media (max-width: 640px) {
   .app-shell {
     padding: 12px;
+  }
+
+  .dashboard-shell {
+    padding: 12px;
+  }
+
+  .dashboard-body {
+    grid-template-columns: 1fr;
   }
 
   .chat-window {

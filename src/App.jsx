@@ -1,9 +1,11 @@
-import { useEffect, useState } from 'react';
-import { BrowserRouter, Route, Routes } from 'react-router-dom';
+import { useEffect, useMemo, useState } from 'react';
+import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import AuditPage from './AuditPage';
 
 const API_URL = import.meta.env.VITE_CHAT_API_URL || import.meta.env.CHAT_API_URL || '';
 const API_KEY = import.meta.env.VITE_CHAT_API_KEY || import.meta.env.CHAT_API_KEY || '';
+const GETSTATES_API_URL = import.meta.env.VITE_GETSTATES_API_URL || import.meta.env.GETSTATES_API_URL || '/states-data';
+const GETSTATES_API_KEY = import.meta.env.VITE_GETSTATES_API_KEY || import.meta.env.GETSTATES_API_KEY || '';
 
 function normalizeText(value, fallback = '') {
   if (value === null || value === undefined) {
@@ -159,6 +161,205 @@ function PaceLogo() {
         </defs>
       </g>
     </svg>
+  );
+}
+
+function DashboardPage() {
+  const [liveData, setLiveData] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    let isActive = true;
+
+    const loadData = async () => {
+      try {
+        const response = await fetch(GETSTATES_API_URL, {
+          method: 'GET',
+          headers: {
+            Accept: 'application/json',
+            ...(GETSTATES_API_KEY ? { Authorization: `Bearer ${GETSTATES_API_KEY}` } : {}),
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error(`Request failed with status ${response.status}`);
+        }
+
+        const payload = await response.json();
+        const candidates = Array.isArray(payload)
+          ? payload
+          : Array.isArray(payload?.states)
+            ? payload.states
+            : [];
+
+        const flattened = candidates.flatMap((item) => (Array.isArray(item?.states) ? item.states : [item]));
+
+        if (isActive) {
+          setLiveData(flattened);
+          setError('');
+        }
+      } catch (err) {
+        if (isActive) {
+          setError(err.message || 'Failed to load live states.');
+        }
+      } finally {
+        if (isActive) {
+          setLoading(false);
+        }
+      }
+    };
+
+    loadData();
+    const intervalId = setInterval(loadData, 30000);
+
+    return () => {
+      isActive = false;
+      clearInterval(intervalId);
+    };
+  }, []);
+
+  const industryCounts = useMemo(() => {
+    const counts = new Map();
+    liveData.forEach((state) => {
+      const industry = state?.industry || 'Unknown';
+      counts.set(industry, (counts.get(industry) || 0) + 1);
+    });
+    return Array.from(counts.entries()).sort((a, b) => b[1] - a[1]);
+  }, [liveData]);
+
+  const decisionCounts = useMemo(() => {
+    const counts = new Map();
+    liveData.forEach((state) => {
+      const decision = state?.one_thing || 'Unknown';
+      counts.set(decision, (counts.get(decision) || 0) + 1);
+    });
+    return Array.from(counts.entries()).sort((a, b) => b[1] - a[1]);
+  }, [liveData]);
+
+  const latestState = liveData.length ? liveData[liveData.length - 1] : null;
+  const latestIndustry = latestState?.industry || industryCounts[0]?.[0] || 'Unknown';
+
+  const radarPoints = industryCounts.map(([industry, count], index) => {
+    const angle = (index / Math.max(industryCounts.length, 1)) * Math.PI * 2 - Math.PI / 2;
+    const radius = 55 + (count * 8) % 30;
+    return {
+      name: industry,
+      count,
+      x: 180 + Math.cos(angle) * radius,
+      y: 180 + Math.sin(angle) * radius,
+      isLatest: industry === latestIndustry,
+    };
+  });
+
+  return (
+    <div className="app-shell dashboard-shell">
+      <div className="dashboard-panel">
+        <header className="topbar dashboard-topbar">
+          <div>
+            <h1>Live Industry Radar</h1>
+            <p>Chat to our agent to get your flight plan!</p>
+          </div>
+          <div className="live-indicator">
+            <span className="live-dot" />
+            Live feed
+          </div>
+        </header>
+
+        <div className="dashboard-body">
+          <div className="radar-card">
+            {loading && <div className="empty-state"><p>Loading live states...</p></div>}
+            {!loading && error && <div className="error-banner" style={{ margin: 0 }}>{error}</div>}
+
+            {!loading && !error && (
+              <div className="radar-visual" aria-label="Live industry radar map">
+                <svg viewBox="0 0 360 360" className="radar-svg">
+                  {[60, 110, 160, 210, 260].map((radius, index) => (
+                    <circle
+                      key={radius}
+                      cx="180"
+                      cy="180"
+                      r={radius}
+                      fill="none"
+                      stroke="rgba(110, 231, 183, 0.22)"
+                      strokeDasharray={index % 2 === 0 ? '4 8' : '2 6'}
+                    />
+                  ))}
+                  {[0, 45, 90, 135, 180, 225, 270, 315].map((angle) => {
+                    const radians = (angle - 90) * (Math.PI / 180);
+                    const x = 180 + Math.cos(radians) * 250;
+                    const y = 180 + Math.sin(radians) * 250;
+                    return (
+                      <line
+                        key={angle}
+                        x1="180"
+                        y1="180"
+                        x2={x}
+                        y2={y}
+                        stroke="rgba(110, 231, 183, 0.14)"
+                      />
+                    );
+                  })}
+                  <circle cx="180" cy="180" r="12" fill="rgba(110, 231, 183, 0.3)" />
+                  <circle cx="180" cy="180" r="70" fill="none" stroke="rgba(110, 231, 183, 0.22)" className="scan-ring" />
+                  {radarPoints.map((point) => (
+                    <g
+                      key={point.name}
+                      className={`radar-point ${point.isLatest ? 'latest' : ''}`}
+                      transform={`translate(${point.x}, ${point.y})`}
+                    >
+                      <circle r={8 + (point.count * 1.5)} fill="rgba(52, 211, 153, 0.28)" className="radar-glow" />
+                      <circle r={4 + point.count} fill={point.isLatest ? '#86efac' : '#6ee7b7'} className="radar-core" />
+                      <circle r={10 + point.count} fill="none" stroke={point.isLatest ? 'rgba(134, 239, 172, 0.8)' : 'rgba(110, 231, 183, 0.25)'} className="radar-pulse" />
+                      <text x="12" y="4" fill="#ecfeff" fontSize="11">{point.name}</text>
+                    </g>
+                  ))}
+                </svg>
+              </div>
+            )}
+          </div>
+
+          <div className="dashboard-side">
+            <div className="stat-card pulse-stat">
+              <span>Active industries</span>
+              <strong>{industryCounts.length}</strong>
+            </div>
+            <div className="stat-card pulse-stat latest-stat">
+              <span>Latest signal</span>
+              <strong>{latestIndustry}</strong>
+            </div>
+            <div className="stat-card">
+              <span>Live decisions</span>
+              <strong>{liveData.length}</strong>
+            </div>
+
+            <div className="list-card">
+              <h3>Top industries</h3>
+              <ul>
+                {industryCounts.slice(0, 6).map(([industry, count]) => (
+                  <li key={industry}>
+                    <span>{industry}</span>
+                    <strong>{count}</strong>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            <div className="list-card">
+              <h3>Decision mix</h3>
+              <ul>
+                {decisionCounts.slice(0, 6).map(([decision, count]) => (
+                  <li key={decision}>
+                    <span>{decision}</span>
+                    <strong>{count}</strong>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -467,6 +668,9 @@ function App() {
       <Routes>
         <Route path="/" element={<ChatApp />} />
         <Route path="/audit" element={<AuditPage />} />
+        <Route path="/Dashboard" element={<DashboardPage />} />
+        <Route path="/dashboard" element={<Navigate to="/Dashboard" replace />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
   );
