@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import AuditPage from './AuditPage';
 
@@ -87,7 +87,55 @@ function extractAssistantPayload(payload) {
   return { message, options, flightPlanPdfDataUrl, currentStep };
 }
 
-const SAMPLE_PROMPT = "My name is Jon Doe, I'm the CTO at Acme Corp. We work in the finance sector";
+const SAMPLE_PROMPT = "";//"My name is Jon Doe, I'm the CTO at Acme Corp. We work in the finance sector";
+
+const THINKING_MESSAGES = {
+  0: [
+    'Filing your flight plan with the tower…',
+    'Fastening seatbelts. Yours too…',
+    'Running the pre-flight checklist…',
+    'Researcher agent is warming up the engines…',
+    'Logging your call sign…',
+  ],
+  1: [
+    'Spotting turbulence worth fixing…',
+    'Analyst agent has the binoculars out…',
+    'Comparing flight logs with today’s other pilots…',
+    'Every bottleneck is a runway in disguise…',
+    'Scoring your opportunities. No pressure…',
+  ],
+  2: [
+    'Following the ripple. It travels further than you’d think…',
+    'Counting who else feels this. Spoiler: quite a few…',
+    'Connecting the dots between your teams…',
+    'No decision in a silo. Not on our watch…',
+    'One signal, three teams. Now we’re talking…',
+  ],
+  3: [
+    'Picking the best runway for you…',
+    'Matching the route to where you are today…',
+    'Planning a take-off that clears your one thing…',
+    'Trimming the flaps for a smooth departure…',
+  ],
+  4: [
+    'Architect agent is sketching your route…',
+    'Charting three routes to take-off…',
+    'Checking the airspace we’d skip for now…',
+    'Brief Writer agent is polishing the details…',
+    'Final approach. Tray tables up…',
+  ],
+};
+
+function getPreviousAssistantStep(messages = []) {
+  const lastAssistantMessage = [...messages].reverse().find((message) => message?.role === 'assistant' && Number.isFinite(message?.currentStep));
+  return lastAssistantMessage?.currentStep ?? 0;
+}
+
+function getThinkingMessage(step = 0) {
+  const normalizedStep = Math.min(4, Math.max(0, Number(step) || 0));
+  const messages = THINKING_MESSAGES[normalizedStep] || THINKING_MESSAGES[0];
+  return messages[0] || 'Processing…';
+}
 
 function PaceLogo() {
   return (
@@ -241,13 +289,22 @@ function DashboardPage() {
   const latestIndustry = latestState?.industry || industryCounts[0]?.[0] || 'Unknown';
 
   const radarPoints = industryCounts.map(([industry, count], index) => {
-    const angle = (index / Math.max(industryCounts.length, 1)) * Math.PI * 2 - Math.PI / 2;
-    const radius = 55 + (count * 8) % 30;
+    const total = Math.max(industryCounts.length, 1);
+    const baseAngle = (index / total) * Math.PI * 2 - Math.PI / 2;
+    const wobble = Math.sin(index * 1.4) * 0.35 + (index % 2 === 0 ? 0.18 : -0.18);
+    const angle = baseAngle + wobble;
+    const radius = Math.min(104, 38 + count * 7 + (index % 4) * 8);
+    const labelDistance = 18 + (index % 3) * 4;
+    const x = 180 + Math.cos(angle) * radius;
+    const y = 180 + Math.sin(angle) * radius;
+
     return {
       name: industry,
       count,
-      x: 180 + Math.cos(angle) * radius,
-      y: 180 + Math.sin(angle) * radius,
+      x: Math.min(318, Math.max(42, x)),
+      y: Math.min(318, Math.max(42, y)),
+      labelX: 180 + Math.cos(angle) * (radius + labelDistance),
+      labelY: 180 + Math.sin(angle) * (radius + labelDistance),
       isLatest: industry === latestIndustry,
     };
   });
@@ -268,7 +325,14 @@ function DashboardPage() {
 
         <div className="dashboard-body">
           <div className="radar-card">
-            {loading && <div className="empty-state"><p>Loading live states...</p></div>}
+            {loading && (
+              <div className="empty-state processing-state">
+                <div className="processing-card">
+                  <div className="processing-spinner" aria-hidden="true" />
+                  <p>Processing... establishing industry...</p>
+                </div>
+              </div>
+            )}
             {!loading && error && <div className="error-banner" style={{ margin: 0 }}>{error}</div>}
 
             {!loading && !error && (
@@ -302,31 +366,45 @@ function DashboardPage() {
                   })}
                   <circle cx="180" cy="180" r="12" fill="rgba(110, 231, 183, 0.3)" />
                   <circle cx="180" cy="180" r="70" fill="none" stroke="rgba(110, 231, 183, 0.22)" className="scan-ring" />
-                  {radarPoints.map((point) => (
-                    <g
-                      key={point.name}
-                      className={`radar-point ${point.isLatest ? 'latest' : ''}`}
-                      transform={`translate(${point.x}, ${point.y})`}
-                    >
-                      <circle r={8 + (point.count * 1.5)} fill="rgba(52, 211, 153, 0.28)" className="radar-glow" />
-                      <circle r={4 + point.count} fill={point.isLatest ? '#86efac' : '#6ee7b7'} className="radar-core" />
-                      <circle r={10 + point.count} fill="none" stroke={point.isLatest ? 'rgba(134, 239, 172, 0.8)' : 'rgba(110, 231, 183, 0.25)'} className="radar-pulse" />
-                      <text x="12" y="4" fill="#ecfeff" fontSize="11">{point.name}</text>
-                    </g>
-                  ))}
+                  {radarPoints.map((point) => {
+                    const opacity = point.isLatest ? 1 : 0.38;
+
+                    return (
+                      <g
+                        key={point.name}
+                        className={`radar-point ${point.isLatest ? 'latest' : ''}`}
+                        opacity={opacity}
+                      >
+                        <circle cx={point.x} cy={point.y} r={8 + (point.count * 1.5)} fill="rgba(52, 211, 153, 0.28)" className="radar-glow" />
+                        <circle cx={point.x} cy={point.y} r={4 + point.count} fill={point.isLatest ? '#86efac' : '#6ee7b7'} className="radar-core" />
+                        <circle cx={point.x} cy={point.y} r={10 + point.count} fill="none" stroke={point.isLatest ? 'rgba(134, 239, 172, 0.8)' : 'rgba(110, 231, 183, 0.25)'} className="radar-pulse" />
+                        <text
+                          x={point.labelX}
+                          y={point.labelY}
+                          fill="#ecfeff"
+                          fontSize={point.isLatest ? 11 : 8}
+                          fontWeight={point.isLatest ? 700 : 500}
+                          textAnchor="middle"
+                          dominantBaseline="middle"
+                        >
+                          {point.name}
+                        </text>
+                      </g>
+                    );
+                  })}
                 </svg>
               </div>
             )}
           </div>
 
           <div className="dashboard-side">
+            <div className="stat-card pulse-stat latest-stat signal-card signal-card-wide">
+              <span>Latest signal</span>
+              <strong className="signal-value">{latestIndustry}</strong>
+            </div>
             <div className="stat-card pulse-stat">
               <span>Active industries</span>
               <strong>{industryCounts.length}</strong>
-            </div>
-            <div className="stat-card pulse-stat latest-stat">
-              <span>Latest signal</span>
-              <strong>{latestIndustry}</strong>
             </div>
             <div className="stat-card">
               <span>Live decisions</span>
@@ -369,6 +447,7 @@ function ChatApp() {
   const [input, setInput] = useState(SAMPLE_PROMPT);
   const [debugMode, setDebugMode] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [thinkingMessage, setThinkingMessage] = useState('');
   const [error, setError] = useState('');
   const [promptSelections, setPromptSelections] = useState({});
   const [leadForm, setLeadForm] = useState({
@@ -378,10 +457,37 @@ function ChatApp() {
     contactMe: false,
   });
   const [showLeadForm, setShowLeadForm] = useState(true);
+  const composerInputRef = useRef(null);
 
   useEffect(() => {
     setConversationId((current) => current || makeConversationId());
   }, []);
+
+  useEffect(() => {
+    if (!isLoading) {
+      setThinkingMessage('');
+      return undefined;
+    }
+
+    const step = getPreviousAssistantStep(messages);
+    const normalizedStep = Math.min(4, Math.max(0, Number(step) || 0));
+    const messagesForStep = THINKING_MESSAGES[normalizedStep] || THINKING_MESSAGES[0];
+
+    if (!messagesForStep.length) {
+      setThinkingMessage('Processing…');
+      return undefined;
+    }
+
+    let index = 0;
+    setThinkingMessage(messagesForStep[index]);
+
+    const intervalId = window.setInterval(() => {
+      index = (index + 1) % messagesForStep.length;
+      setThinkingMessage(messagesForStep[index]);
+    }, 2700);
+
+    return () => window.clearInterval(intervalId);
+  }, [isLoading, messages]);
 
   const sendMessage = async (messageText, options = {}) => {
     const { silent = false } = options;
@@ -507,6 +613,11 @@ function ChatApp() {
     });
   };
 
+  const handleOtherPrompt = () => {
+    composerInputRef.current?.focus();
+    composerInputRef.current?.select();
+  };
+
   return (
     <div className="app-shell">
       <div className="chat-window">
@@ -514,14 +625,9 @@ function ChatApp() {
           <div className="brand-group">
             <PaceLogo />
             <div>
-              <h1>AI Chat</h1>
-              <p>Conversation ID: {conversationId}</p>
+              <h1>Pre-flight Check-In agent</h1>
             </div>
           </div>
-          <label className="toggle">
-            <input type="checkbox" checked={debugMode} onChange={(event) => setDebugMode(event.target.checked)} />
-            <span>Debug mode</span>
-          </label>
         </header>
 
         <div className="messages-panel">
@@ -599,21 +705,34 @@ function ChatApp() {
                     )}
 
                     {message.role === 'assistant' && Array.isArray(message.options) && message.options.length > 0 && (
-                      <div className="prompt-list">
-                        {message.options.map((option) => {
-                          const isSelected = (promptSelections[message.id] || []).includes(option);
+                      <div className="prompt-block">
+                        <div className="prompt-instruction">Select all that apply</div>
+                        <div className="prompt-list">
+                          {message.options.map((option) => {
+                            const isSelected = (promptSelections[message.id] || []).includes(option);
 
-                          return (
+                            return (
+                              <button
+                                key={`${message.id}-${option}`}
+                                type="button"
+                                className={`prompt-chip ${isSelected ? 'selected' : ''}`}
+                                onClick={() => togglePromptSelection(message.id, option)}
+                              >
+                                {option}
+                              </button>
+                            );
+                          })}
+
+                          {Number.isFinite(message.currentStep) && message.currentStep !== 5 && (
                             <button
-                              key={`${message.id}-${option}`}
                               type="button"
-                              className={`prompt-chip ${isSelected ? 'selected' : ''}`}
-                              onClick={() => togglePromptSelection(message.id, option)}
+                              className="prompt-chip other-option"
+                              onClick={handleOtherPrompt}
                             >
-                              {option}
+                              Other
                             </button>
-                          );
-                        })}
+                          )}
+                        </div>
                       </div>
                     )}
 
@@ -636,7 +755,7 @@ function ChatApp() {
 
           {isLoading && (
             <div className="message-row assistant">
-              <div className="bubble assistant waiting">Thinking...</div>
+              <div className="bubble assistant waiting">{thinkingMessage || getThinkingMessage(getPreviousAssistantStep(messages))}</div>
             </div>
           )}
         </div>
@@ -646,6 +765,7 @@ function ChatApp() {
         <form className="composer" onSubmit={handleSubmit}>
           <div className="composer-row">
             <input
+              ref={composerInputRef}
               type="text"
               value={input}
               onChange={(event) => setInput(event.target.value)}
