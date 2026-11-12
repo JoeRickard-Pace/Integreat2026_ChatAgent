@@ -6,6 +6,8 @@ const API_URL = import.meta.env.VITE_CHAT_API_URL || import.meta.env.CHAT_API_UR
 const API_KEY = import.meta.env.VITE_CHAT_API_KEY || import.meta.env.CHAT_API_KEY || '';
 const GETSTATES_API_URL = import.meta.env.VITE_GETSTATES_API_URL || import.meta.env.GETSTATES_API_URL || '/states-data';
 const GETSTATES_API_KEY = import.meta.env.VITE_GETSTATES_API_KEY || import.meta.env.GETSTATES_API_KEY || '';
+const SETCANCONTACT_API_URL = import.meta.env.VITE_SETCANCONTACT_API_URL || import.meta.env.SETCANCONTACT_API_URL || '';
+const SETCANCONTACT_API_KEY = import.meta.env.VITE_SETCANCONTACT_API_KEY || import.meta.env.SETCANCONTACT_API_KEY || '';
 
 function normalizeText(value, fallback = '') {
   if (value === null || value === undefined) {
@@ -122,6 +124,7 @@ const THINKING_MESSAGES = {
     'Charting three routes to take-off…',
     'Checking the airspace we’d skip for now…',
     'Brief Writer agent is polishing the details…',
+    'Checking the weather. It’s clear skies ahead…',
     'Final approach. Tray tables up…',
   ],
 };
@@ -457,7 +460,11 @@ function ChatApp() {
     contactMe: false,
   });
   const [showLeadForm, setShowLeadForm] = useState(true);
+  const [contactChoice, setContactChoice] = useState(null);
   const composerInputRef = useRef(null);
+
+  const finalAssistantMessage = [...messages].reverse().find((message) => message.role === 'assistant');
+  const isRoundUpComplete = Boolean(finalAssistantMessage?.flightPlanPdfDataUrl);
 
   useEffect(() => {
     setConversationId((current) => current || makeConversationId());
@@ -582,6 +589,35 @@ function ChatApp() {
     sendMessage(payload, { silent: true });
   };
 
+  const handleContactChoice = async (choice) => {
+    const selectedChoice = Boolean(choice);
+    setContactChoice(selectedChoice);
+
+    if (!SETCANCONTACT_API_URL) {
+      return;
+    }
+
+    try {
+      const response = await fetch(SETCANCONTACT_API_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(SETCANCONTACT_API_KEY ? { Authorization: `Bearer ${SETCANCONTACT_API_KEY}` } : {}),
+        },
+        body: JSON.stringify({
+          conversation_id: conversationId,
+          can_contact: selectedChoice,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Request failed with status ${response.status}`);
+      }
+    } catch (err) {
+      setError(err.message || 'Something went wrong while saving your contact preference.');
+    }
+  };
+
   const togglePromptSelection = (messageId, option) => {
     setPromptSelections((current) => {
       const next = { ...current };
@@ -684,7 +720,7 @@ function ChatApp() {
             </div>
           )}
 
-          {messages.map((message) => (
+          {!isRoundUpComplete && messages.map((message) => (
             <div key={message.id} className={`message-row ${message.role}`}>
               <div className={`bubble ${message.role} ${message.error ? 'error' : ''}`}>
                 {message.raw ? (
@@ -753,7 +789,51 @@ function ChatApp() {
             </div>
           ))}
 
-          {isLoading && (
+          {isRoundUpComplete && finalAssistantMessage && (
+            <div className="roundup-panel">
+              <div className="roundup-header">Your flight plan is ready</div>
+              <div className="roundup-summary">
+                <div className="message-text">{finalAssistantMessage.text}</div>
+                {finalAssistantMessage.flightPlanPdfDataUrl && (
+                  <div className="pdf-attachment">
+                    <object data={finalAssistantMessage.flightPlanPdfDataUrl} type="application/pdf" className="flight-plan-pdf-preview">
+                      <a href={finalAssistantMessage.flightPlanPdfDataUrl} download="pace-integration-flightplan.pdf">Download pace-integration-flightplan.pdf</a>
+                    </object>
+                    <a href={finalAssistantMessage.flightPlanPdfDataUrl} download="pace-integration-flightplan.pdf" className="pdf-download-link">
+                      Download pace-integration-flightplan.pdf
+                    </a>
+                  </div>
+                )}
+              </div>
+
+              <div className="contact-choice">
+                <p>Would you like us to get in touch to help make this a reality?</p>
+                <div className="contact-actions">
+                  <button
+                    type="button"
+                    className={`contact-button ${contactChoice === true ? 'selected' : ''}`}
+                    onClick={() => handleContactChoice(true)}
+                  >
+                    Yes, contact me
+                  </button>
+                  <button
+                    type="button"
+                    className={`contact-button ${contactChoice === false ? 'selected' : ''}`}
+                    onClick={() => handleContactChoice(false)}
+                  >
+                    No thanks
+                  </button>
+                </div>
+                {contactChoice !== null && (
+                  <div className="contact-confirmation">
+                    {contactChoice ? 'Thanks — we will be in touch.' : 'No problem — thanks for your time.'}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {isLoading && !isRoundUpComplete && (
             <div className="message-row assistant">
               <div className="bubble assistant waiting">{thinkingMessage || getThinkingMessage(getPreviousAssistantStep(messages))}</div>
             </div>
@@ -762,21 +842,23 @@ function ChatApp() {
 
         {error && <div className="error-banner">{error}</div>}
 
-        <form className="composer" onSubmit={handleSubmit}>
-          <div className="composer-row">
-            <input
-              ref={composerInputRef}
-              type="text"
-              value={input}
-              onChange={(event) => setInput(event.target.value)}
-              placeholder="Ask a question..."
-              aria-label="Message input"
-            />
-            <button type="submit" disabled={isLoading || !input.trim()}>
-              Send
-            </button>
-          </div>
-        </form>
+        {!isRoundUpComplete && (
+          <form className="composer" onSubmit={handleSubmit}>
+            <div className="composer-row">
+              <input
+                ref={composerInputRef}
+                type="text"
+                value={input}
+                onChange={(event) => setInput(event.target.value)}
+                placeholder="Ask a question..."
+                aria-label="Message input"
+              />
+              <button type="submit" disabled={isLoading || !input.trim()}>
+                Send
+              </button>
+            </div>
+          </form>
+        )}
       </div>
     </div>
   );
