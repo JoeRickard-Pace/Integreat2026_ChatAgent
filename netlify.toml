@@ -1,4 +1,15 @@
 [[redirects]]
+from = "/booth"
+to = "/booth/"
+status = 301
+force = true
+
+[[redirects]]
+from = "/booth/*"
+to = "/booth/:splat"
+status = 200
+
+[[redirects]]
 from = "/*"
 to = "/index.html"
 status = 200

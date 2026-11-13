@@ -3,11 +3,8 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import AuditPage from './AuditPage';
 
 const API_URL = import.meta.env.VITE_CHAT_API_URL || import.meta.env.CHAT_API_URL || '';
-const API_KEY = import.meta.env.VITE_CHAT_API_KEY || import.meta.env.CHAT_API_KEY || '';
 const GETSTATES_API_URL = import.meta.env.VITE_GETSTATES_API_URL || import.meta.env.GETSTATES_API_URL || '/states-data';
-const GETSTATES_API_KEY = import.meta.env.VITE_GETSTATES_API_KEY || import.meta.env.GETSTATES_API_KEY || '';
 const SETCANCONTACT_API_URL = import.meta.env.VITE_SETCANCONTACT_API_URL || import.meta.env.SETCANCONTACT_API_URL || '';
-const SETCANCONTACT_API_KEY = import.meta.env.VITE_SETCANCONTACT_API_KEY || import.meta.env.SETCANCONTACT_API_KEY || '';
 
 function normalizeText(value, fallback = '') {
   if (value === null || value === undefined) {
@@ -229,7 +226,6 @@ function DashboardPage() {
           method: 'GET',
           headers: {
             Accept: 'application/json',
-            ...(GETSTATES_API_KEY ? { Authorization: `Bearer ${GETSTATES_API_KEY}` } : {}),
           },
         });
 
@@ -515,7 +511,6 @@ function ChatApp() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...(API_KEY ? { Authorization: `Bearer ${API_KEY}` } : {}),
         },
         body: JSON.stringify({
           conversation_id: conversationId,
@@ -602,7 +597,6 @@ function ChatApp() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...(SETCANCONTACT_API_KEY ? { Authorization: `Bearer ${SETCANCONTACT_API_KEY}` } : {}),
         },
         body: JSON.stringify({
           conversation_id: conversationId,
@@ -872,6 +866,8 @@ function App() {
         <Route path="/audit" element={<AuditPage />} />
         <Route path="/Dashboard" element={<DashboardPage />} />
         <Route path="/dashboard" element={<Navigate to="/Dashboard" replace />} />
+        <Route path="/booth" element={<Navigate to="/booth/" replace />} />
+        <Route path="/booth/*" element={<Navigate to="/booth/" replace />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
