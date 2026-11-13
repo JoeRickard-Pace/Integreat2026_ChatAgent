@@ -229,6 +229,7 @@ function DashboardPage() {
           method: 'GET',
           headers: {
             Accept: 'application/json',
+            ...(GETSTATES_API_KEY ? { Authorization: `Bearer ${GETSTATES_API_KEY}` } : {}),
           },
         });
 
@@ -287,7 +288,18 @@ function DashboardPage() {
     return Array.from(counts.entries()).sort((a, b) => b[1] - a[1]);
   }, [liveData]);
 
-  const latestState = liveData.length ? liveData[liveData.length - 1] : null;
+  const latestState = useMemo(() => {
+    const validStates = liveData
+      .filter((state) => state && typeof state === 'object' && state?.industry && String(state.industry).trim())
+      .sort((a, b) => {
+        const timeA = a?.created_at ? new Date(a.created_at).getTime() : 0;
+        const timeB = b?.created_at ? new Date(b.created_at).getTime() : 0;
+        return timeB - timeA;
+      });
+
+    return validStates[0] || null;
+  }, [liveData]);
+
   const latestIndustry = latestState?.industry || industryCounts[0]?.[0] || 'Unknown';
 
   const radarPoints = industryCounts.map(([industry, count], index) => {
