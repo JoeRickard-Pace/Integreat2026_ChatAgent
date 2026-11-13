@@ -10,6 +10,7 @@ export default defineConfig(({ mode }) => {
   const boothConfig = {
     bookingUrl: 'mailto:connect@paceintegration.com?subject=Pre-flight%20check',
     liveDataUrl: env.VITE_GETSTATES_API_URL || env.GETSTATES_API_URL || '/states-data',
+    liveDataToken: env.VITE_GETSTATES_API_KEY || env.GETSTATES_API_KEY || '',
     award: false,
   };
 

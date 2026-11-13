@@ -2596,7 +2596,12 @@ var qrcode = function() {
         throw new Error('Booth config not available');
       }
       const config = await response.json();
-      window.BOOTH_CFG = { ...window.BOOTH_CFG, ...config };
+      if (config && typeof config === 'object') {
+        window.BOOTH_CFG = {
+          ...window.BOOTH_CFG,
+          ...config,
+        };
+      }
     } catch (error) {
       // Keep the safe fallback so the slide deck still renders.
     }
