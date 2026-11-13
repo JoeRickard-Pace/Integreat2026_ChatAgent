@@ -1,8 +1,12 @@
 [[redirects]]
 from = "/booth"
-to = "/booth/"
-status = 301
-force = true
+to = "/booth/index.html"
+status = 200
+
+[[redirects]]
+from = "/booth/"
+to = "/booth/index.html"
+status = 200
 
 [[redirects]]
 from = "/booth/*"
